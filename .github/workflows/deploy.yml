@@ -20,7 +20,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 1
+        # GitHub 일시 장애 대비 재시도
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -28,7 +30,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          for i in 1 2 3; do
+            npm ci && break || echo "npm ci failed, retry $i" && sleep 10
+          done
 
       - name: Build (Next.js static export)
         env:
