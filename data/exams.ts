@@ -16,14 +16,22 @@ export type ExamAnnotation = {
 
 export type ExamVerse = {
   verse: number;
+  /** 절별 장 (옵션). 없으면 exam.chapter 사용. 다장(多章) 시험에서 사용. */
+  chapter?: number;
   segments: ExamSegment[];
   annotations: ExamAnnotation[];
 };
 
+export type TestMode = "title" | "blank" | "anno" | "fullText";
+
 export type Exam = {
   id: string;
-  chapter: number;
-  title: string; // 예: "계 6장  배도한 선천 해·달·별에 대한 심판"
+  chapter: number; // 대표 장 (다장 시험은 0)
+  title: string;
+  /** 전문 쓰기 시험 모드를 기본/유일 시험으로 사용 */
+  fullTextMode?: boolean;
+  /** 표시할 시험 모드 화이트리스트. 미지정 시 전부 노출. */
+  testModes?: TestMode[];
   verses: ExamVerse[];
 };
 
@@ -210,7 +218,223 @@ export const EXAMS: Exam[] = [
       },
     ],
   },
+
+  /* ─────────── 5/31 대비 — 1유형 (전문 쓰기) ─────────── */
+  {
+    id: "5-31-type1",
+    chapter: 0,
+    title: "5/31 시험 · 1유형 (전문 쓰기)",
+    fullTextMode: true,
+    testModes: ["fullText"],
+    verses: [
+      {
+        chapter: 7,
+        verse: 1,
+        segments: [
+          t(
+            "이 일 후에 내가 네 천사가 땅 네 모퉁이에 선 것을 보니 땅의 사방의 바람을 붙잡아 바람으로 하여금 땅에나 바다에나 각종 나무에 불지 못하게 하더라"
+          ),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 7,
+        verse: 2,
+        segments: [
+          t(
+            "또 보매 다른 천사가 살아 계신 하나님의 인을 가지고 해 돋는 데로부터 올라와서 땅과 바다를 해롭게 할 권세를 얻은 네 천사를 향하여 큰 소리로 외쳐"
+          ),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 7,
+        verse: 3,
+        segments: [
+          t(
+            "가로되 우리가 우리 하나님의 종들의 이마에 인치기까지 땅이나 바다나 나무나 해하지 말라 하더라"
+          ),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 7,
+        verse: 4,
+        segments: [
+          t(
+            "내가 인 맞은 자의 수를 들으니 이스라엘 자손의 각 지파 중에서 인 맞은 자들이 십사만 사천이니"
+          ),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 10,
+        verse: 10,
+        segments: [
+          t(
+            "내가 천사의 손에서 작은 책을 갖다 먹어버리니 내 입에는 꿀같이 다나 먹은 후에 내 배에서는 쓰게 되더라"
+          ),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 10,
+        verse: 11,
+        segments: [
+          t(
+            "저가 내게 말하기를 네가 많은 백성과 나라와 방언과 임금에게 다시 예언하여야 하리라 하더라"
+          ),
+        ],
+        annotations: [],
+      },
+    ],
+  },
+
+  /* ─────────── 5/31 대비 — 2유형 (괄호 채우기) ─────────── */
+  {
+    id: "5-31-type2",
+    chapter: 0,
+    title: "5/31 시험 · 2유형 (괄호 채우기)",
+    testModes: ["blank"],
+    verses: [
+      {
+        chapter: 1,
+        verse: 1,
+        segments: [
+          m(1, "예수 그리스도의 계시"),
+          t("라 이는 하나님이 그에게 주사 "),
+          m(2, "반드시 속히 될 일"),
+          t("을 그 "),
+          m(3, "종들"),
+          t("에게 보이시려고 그 천사를 그 종 "),
+          m(4, "요한"),
+          t("에게 보내어 지시하신 것이라"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 1,
+        verse: 2,
+        segments: [
+          t("요한은 "),
+          m(1, "하나님의 말씀"),
+          t("과 "),
+          m(2, "예수 그리스도의 증거"),
+          t(" 곧 "),
+          m(3, "자기의 본 것"),
+          t("을 다 "),
+          m(4, "증거"),
+          t("하였느니라"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 1,
+        verse: 3,
+        segments: [
+          t("이 "),
+          m(1, "예언의 말씀"),
+          t("을 "),
+          m(2, "읽는 자"),
+          t("와 "),
+          m(3, "듣는 자들"),
+          t("과 그 가운데 "),
+          m(4, "기록한 것을 지키는 자들"),
+          t("이 "),
+          m(5, "복"),
+          t("이 있나니 때가 가까움이라"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 20,
+        verse: 4,
+        segments: [
+          t("또 내가 "),
+          m(1, "보좌들"),
+          t("을 보니 거기 "),
+          m(2, "앉은 자들"),
+          t("이 있어 "),
+          m(3, "심판하는 권세"),
+          t("를 받았더라 또 내가 보니 "),
+          m(4, "예수의 증거"),
+          t("와 "),
+          m(5, "하나님의 말씀"),
+          t("을 인하여 "),
+          m(6, "목 베임을 받은 자의 영혼들"),
+          t("과 또 "),
+          m(7, "짐승과 그의 우상에게 경배"),
+          t("하지도 아니하고 "),
+          m(8, "이마와 손에 그의 표"),
+          t("를 받지도 아니한 자들이 "),
+          m(9, "살아서"),
+          t(" 그리스도로 더불어 "),
+          m(10, "천 년 동안 왕 노릇"),
+          t(" 하니"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 20,
+        verse: 5,
+        segments: [
+          m(1, "그 나머지 죽은 자들은 그 천 년이 차기까지 살지 못하더라"),
+          t(" 이는 "),
+          m(2, "첫째 부활"),
+          t("이라"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 20,
+        verse: 6,
+        segments: [
+          t("이 "),
+          m(1, "첫째 부활"),
+          t("에 참예하는 자들은 복이 있고 거룩하도다 "),
+          m(2, "둘째 사망"),
+          t("이 그들을 다스리는 권세가 없고 도리어 그들이 하나님과 그리스도의 "),
+          m(3, "제사장"),
+          t("이 되어 "),
+          m(4, "천 년 동안"),
+          t(" 그리스도로 더불어 "),
+          m(5, "왕 노릇"),
+          t(" 하리라"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 22,
+        verse: 18,
+        segments: [
+          t("내가 이 책의 "),
+          m(1, "예언의 말씀"),
+          t("을 듣는 각인에게 증거하노니 만일 누구든지 이것들 외에 더하면 하나님이 이 책에 기록된 "),
+          m(2, "재앙들"),
+          t("을 그에게 더하실 터이요"),
+        ],
+        annotations: [],
+      },
+      {
+        chapter: 22,
+        verse: 19,
+        segments: [
+          t(
+            "만일 누구든지 이 책의 예언의 말씀에서 제하여 버리면 하나님이 이 책에 기록된 "
+          ),
+          m(1, "생명나무와 및 거룩한 성에 참예함"),
+          t("을 제하여 버리시리라"),
+        ],
+        annotations: [],
+      },
+    ],
+  },
 ];
+
+// 절의 전체 본문 텍스트 (전문 쓰기 시험의 정답으로 사용)
+export function verseFullText(v: ExamVerse): string {
+  return v.segments.map((s) => s.text).join("");
+}
 
 export function getExam(id: string) {
   return EXAMS.find((e) => e.id === id);

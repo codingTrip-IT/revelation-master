@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Exam, ExamAnnotation, ExamVerse } from "@/data/exams";
+import type { Exam, ExamAnnotation, ExamVerse, TestMode } from "@/data/exams";
+import { verseFullText } from "@/data/exams";
 import { isCorrect, normalizeAnswer } from "@/lib/blank";
 import { addAttempt } from "@/lib/storage";
+
+const chOf = (exam: Exam, v: ExamVerse) => v.chapter ?? exam.chapter;
 
 const CIRCLED = [
   "①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩",
@@ -12,9 +15,15 @@ const CIRCLED = [
 const circled = (n: number) => CIRCLED[n - 1] ?? `(${n})`;
 const keyOf = (v: number, n: number) => `${v}-${n}`;
 
-type Mode = "all" | "byVerse" | "title" | "blank" | "anno";
+type Mode = "all" | "byVerse" | "title" | "blank" | "anno" | "fullText";
 
-const MODES: { id: Mode; label: string; desc: string; group: "보기" | "시험" }[] = [
+const MODES: {
+  id: Mode;
+  label: string;
+  desc: string;
+  group: "보기" | "시험";
+  testMode?: TestMode;
+}[] = [
   { id: "all", label: "📖 전체 보기", desc: "본문 + 주석 모두 펼침", group: "보기" },
   {
     id: "byVerse",
@@ -22,41 +31,98 @@ const MODES: { id: Mode; label: string; desc: string; group: "보기" | "시험"
     desc: "한 절씩 보고, 가리고, 시험까지",
     group: "보기",
   },
-  { id: "title", label: "🏷 제목 시험", desc: "장 제목을 정확히 쓰기", group: "시험" },
-  { id: "blank", label: "📝 빈칸 시험", desc: "본문 안 핵심 어구 직접 입력", group: "시험" },
-  { id: "anno", label: "🧾 주석 시험", desc: "각 번호의 의미를 떠올리고 자가 채점", group: "시험" },
+  {
+    id: "title",
+    label: "🏷 제목 시험",
+    desc: "장 제목을 정확히 쓰기",
+    group: "시험",
+    testMode: "title",
+  },
+  {
+    id: "blank",
+    label: "📝 빈칸 시험",
+    desc: "본문 안 핵심 어구 직접 입력",
+    group: "시험",
+    testMode: "blank",
+  },
+  {
+    id: "anno",
+    label: "🧾 주석 시험",
+    desc: "각 번호의 의미를 떠올리고 자가 채점",
+    group: "시험",
+    testMode: "anno",
+  },
+  {
+    id: "fullText",
+    label: "✍️ 전문 쓰기",
+    desc: "절 전체 본문을 그대로 입력",
+    group: "시험",
+    testMode: "fullText",
+  },
 ];
 
 export default function ExamView({ exam }: { exam: Exam }) {
-  const [mode, setMode] = useState<Mode>("all");
+  const visibleModes = useMemo(() => {
+    const allowed = exam.testModes;
+    return MODES.filter((m) => {
+      if (m.group === "보기") return true;
+      if (!m.testMode) return true;
+      if (!allowed) return m.id !== "fullText"; // 기본: fullText는 명시적으로 활성화한 시험에만
+      return allowed.includes(m.testMode);
+    });
+  }, [exam.testModes]);
+
+  // 기본 모드: fullTextMode 면 fullText, 아니면 전체 보기
+  const [mode, setMode] = useState<Mode>(exam.fullTextMode ? "fullText" : "all");
 
   return (
     <div className="space-y-4">
-      <ModeBar mode={mode} setMode={setMode} />
+      <ModeBar visibleModes={visibleModes} mode={mode} setMode={setMode} />
 
       {mode === "all" && <FullView exam={exam} />}
       {mode === "byVerse" && <ByVerseStudy exam={exam} />}
       {mode === "title" && <TitleQuiz exam={exam} />}
       {mode === "blank" && <BlankQuiz exam={exam} />}
       {mode === "anno" && <AnnotationQuiz exam={exam} />}
+      {mode === "fullText" && <FullTextQuiz exam={exam} />}
     </div>
   );
 }
 
-function ModeBar({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
-  const current = MODES.find((m) => m.id === mode);
+function ModeBar({
+  visibleModes,
+  mode,
+  setMode,
+}: {
+  visibleModes: typeof MODES;
+  mode: Mode;
+  setMode: (m: Mode) => void;
+}) {
+  const current = visibleModes.find((m) => m.id === mode);
+  const view = visibleModes.filter((m) => m.group === "보기");
+  const test = visibleModes.filter((m) => m.group === "시험");
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-slate-500 mr-1">보기</span>
-        {MODES.filter((m) => m.group === "보기").map((m) => (
-          <ModeButton key={m.id} m={m} mode={mode} setMode={setMode} />
-        ))}
-        <span className="text-xs text-slate-500 mx-1">|</span>
-        <span className="text-xs text-slate-500 mr-1">시험</span>
-        {MODES.filter((m) => m.group === "시험").map((m) => (
-          <ModeButton key={m.id} m={m} mode={mode} setMode={setMode} />
-        ))}
+        {view.length > 0 && (
+          <>
+            <span className="text-xs text-slate-500 mr-1">보기</span>
+            {view.map((m) => (
+              <ModeButton key={m.id} m={m} mode={mode} setMode={setMode} />
+            ))}
+          </>
+        )}
+        {view.length > 0 && test.length > 0 && (
+          <span className="text-xs text-slate-500 mx-1">|</span>
+        )}
+        {test.length > 0 && (
+          <>
+            <span className="text-xs text-slate-500 mr-1">시험</span>
+            {test.map((m) => (
+              <ModeButton key={m.id} m={m} mode={mode} setMode={setMode} />
+            ))}
+          </>
+        )}
       </div>
       {current && <div className="text-xs text-slate-500">{current.desc}</div>}
     </div>
@@ -155,7 +221,7 @@ function ByVerseStudy({ exam }: { exam: Exam }) {
     try {
       if (total > 0) {
         addAttempt({
-          chapter: exam.chapter,
+          chapter: chOf(exam, verse) ?? exam.chapter,
           verse: verse.verse,
           mode: "blank",
           correct: missed.length === 0,
@@ -216,7 +282,7 @@ function ByVerseStudy({ exam }: { exam: Exam }) {
           ))}
         </div>
         <div className="text-sm text-slate-600">
-          계 {exam.chapter}:{verse.verse}
+          계 {chOf(exam, verse)}:{verse.verse}
           {studyMode === "blankVerse" && (
             <>
               {" · 빈칸 "}
@@ -247,7 +313,7 @@ function ByVerseStudy({ exam }: { exam: Exam }) {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <VerseHeader chapter={exam.chapter} verse={verse.verse} />
+        <VerseHeader chapter={chOf(exam, verse)} verse={verse.verse} />
         {studyMode === "blankVerse" ? (
           /* 구절 시험: 본문 빈칸, 주석 숨김 */
           <p className="leading-loose text-[17px] text-slate-800">
@@ -458,7 +524,7 @@ function FullView({ exam }: { exam: Exam }) {
       <ol className="space-y-5">
         {exam.verses.map((v) => (
           <li key={v.verse} className="rounded-2xl border border-slate-200 bg-white p-5">
-            <VerseHeader chapter={exam.chapter} verse={v.verse} />
+            <VerseHeader chapter={chOf(exam, v)} verse={v.verse} />
             <VerseHighlighted verse={v} />
             {v.annotations.length > 0 && (
               <ul className="mt-4 space-y-2">
@@ -583,8 +649,9 @@ function BlankQuiz({ exam }: { exam: Exam }) {
       }
       for (const [verseNum, entry] of byVerse) {
         if (entry.total === 0) continue;
+        const verseObj = exam.verses.find((vv) => vv.verse === verseNum);
         addAttempt({
-          chapter: exam.chapter,
+          chapter: verseObj ? chOf(exam, verseObj) : exam.chapter,
           verse: verseNum,
           mode: "blank",
           correct: entry.missed.length === 0,
@@ -626,7 +693,7 @@ function BlankQuiz({ exam }: { exam: Exam }) {
       <ol className="space-y-5">
         {exam.verses.map((v) => (
           <li key={v.verse} className="rounded-2xl border border-slate-200 bg-white p-5">
-            <VerseHeader chapter={exam.chapter} verse={v.verse} />
+            <VerseHeader chapter={chOf(exam, v)} verse={v.verse} />
             <p className="leading-loose text-[17px] text-slate-800">
               {v.segments.map((s, i) => {
                 if (s.kind === "text") return <span key={i}>{s.text}</span>;
@@ -759,8 +826,9 @@ function AnnotationQuiz({ exam }: { exam: Exam }) {
       }
       for (const [verseNum, entry] of byVerse) {
         if (entry.total === 0) continue;
+        const verseObj = exam.verses.find((vv) => vv.verse === verseNum);
         addAttempt({
-          chapter: exam.chapter,
+          chapter: verseObj ? chOf(exam, verseObj) : exam.chapter,
           verse: verseNum,
           mode: "blank",
           correct: entry.missed.length === 0,
@@ -925,6 +993,166 @@ function AnnotationQuiz({ exam }: { exam: Exam }) {
       </div>
       <p className="text-xs text-slate-400">
         ※ 자동 채점은 키워드 일치 기반이라 완벽하지 않습니다. ‘정답 보기’ 후 직접 ✓/✗ 표시도 가능합니다.
+      </p>
+    </div>
+  );
+}
+
+/* ─────────────────────────────── 전문 쓰기 시험 ─────────────────────────────── */
+function FullTextQuiz({ exam }: { exam: Exam }) {
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [graded, setGraded] = useState<Record<string, boolean> | null>(null);
+  const [showAnswers, setShowAnswers] = useState<Record<string, boolean>>({});
+
+  const keyOfVerse = (v: ExamVerse) => `${chOf(exam, v)}-${v.verse}`;
+
+  function gradeAll() {
+    const r: Record<string, boolean> = {};
+    const missed: string[] = [];
+    for (const v of exam.verses) {
+      const k = keyOfVerse(v);
+      const val = inputs[k] ?? "";
+      const expected = verseFullText(v);
+      const ok = strictMatch(val, expected);
+      r[k] = ok;
+      if (!ok) missed.push(`계 ${chOf(exam, v)}:${v.verse}`);
+    }
+    setGraded(r);
+
+    try {
+      for (const v of exam.verses) {
+        addAttempt({
+          chapter: chOf(exam, v),
+          verse: v.verse,
+          mode: "blank",
+          correct: r[keyOfVerse(v)],
+          missedWords: r[keyOfVerse(v)] ? [] : [verseFullText(v)],
+          total: 1,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function reset() {
+    setInputs({});
+    setGraded(null);
+    setShowAnswers({});
+  }
+
+  function toggleAnswer(k: string) {
+    setShowAnswers((p) => ({ ...p, [k]: !p[k] }));
+  }
+
+  const correctCount = graded ? Object.values(graded).filter(Boolean).length : 0;
+  const total = exam.verses.length;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+        총 {total}절 · 전문 쓰기
+        {graded && (
+          <>
+            {" · "}
+            <span
+              className={
+                correctCount === total ? "text-emerald-700" : "text-sky-700"
+              }
+            >
+              맞춤 {correctCount}/{total}
+            </span>
+          </>
+        )}
+      </div>
+
+      <ol className="space-y-4">
+        {exam.verses.map((v) => {
+          const k = keyOfVerse(v);
+          const val = inputs[k] ?? "";
+          const result = graded?.[k];
+          const expected = verseFullText(v);
+          const shown = showAnswers[k];
+          return (
+            <li
+              key={k}
+              className={`rounded-2xl border bg-white p-5 transition ${
+                result === true
+                  ? "border-emerald-300 bg-emerald-50/30"
+                  : result === false
+                  ? "border-red-300 bg-red-50/30"
+                  : "border-slate-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <VerseHeader chapter={chOf(exam, v)} verse={v.verse} />
+                {result !== undefined && (
+                  <span
+                    className={`text-[10px] rounded-full px-2 py-0.5 font-semibold ${
+                      result
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : "bg-red-100 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    {result ? "✓ 정답" : "✗ 오답"}
+                  </span>
+                )}
+              </div>
+              <textarea
+                rows={4}
+                value={val}
+                onChange={(e) =>
+                  setInputs((p) => ({ ...p, [k]: e.target.value }))
+                }
+                placeholder={`${v.verse}절을 외운 그대로 입력하세요…`}
+                spellCheck={false}
+                className={`w-full rounded-lg border-2 px-3 py-2 text-[15px] leading-relaxed outline-none resize-y transition ${
+                  result === false
+                    ? "border-red-400 focus:border-red-600"
+                    : result === true
+                    ? "border-emerald-400 focus:border-emerald-600"
+                    : "border-slate-300 focus:border-sky-600"
+                }`}
+              />
+              {/* 채점 후 정답 토글 */}
+              {graded && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => toggleAnswer(k)}
+                    className="text-xs text-sky-700 hover:underline"
+                  >
+                    {shown ? "정답 숨기기" : "정답 보기"}
+                  </button>
+                  {shown && (
+                    <div className="mt-2 rounded-lg bg-white border border-slate-200 p-3 text-[14px] text-slate-700 leading-relaxed">
+                      <span className="text-xs font-semibold text-sky-700 mr-2">정답</span>
+                      {expected}
+                    </div>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="sticky bottom-2 flex gap-2 justify-end">
+        <button
+          onClick={reset}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"
+        >
+          초기화
+        </button>
+        <button
+          onClick={gradeAll}
+          className="rounded-lg bg-sky-700 text-white px-5 py-2 text-sm font-medium hover:bg-sky-800 shadow"
+        >
+          채점하기
+        </button>
+      </div>
+      <p className="text-xs text-slate-400">
+        ※ 정확 일치로 채점합니다 (공백·줄바꿈만 무시).
       </p>
     </div>
   );
