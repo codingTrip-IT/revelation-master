@@ -40,6 +40,7 @@ jobs:
           # Secrets 에서 주입
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_APP_PIN: ${{ secrets.NEXT_PUBLIC_APP_PIN }}
           # repo 이름 그대로 — basePath 로 들어감
           NEXT_PUBLIC_BASE_PATH: /revelation-master
         run: npm run build
