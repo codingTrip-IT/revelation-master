@@ -70,3 +70,23 @@ create policy "anon all silsang"
 create policy "anon all images"
   on public.verse_images for all
   using (true) with check (true);
+
+-- ============================================================
+-- Data API 노출 권한 (GRANT)
+-- 2026-10-30 부터 public 스키마 테이블은 명시적 GRANT 가 있어야
+-- PostgREST / supabase-js 로 접근 가능. 미리 부여해 둠.
+-- ============================================================
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete
+  on public.attempts, public.silsang_notes, public.verse_images
+  to anon, authenticated;
+
+-- bigserial 시퀀스 사용 권한 (insert 시 id 자동 증가)
+grant usage, select on all sequences in schema public to anon, authenticated;
+
+-- 앞으로 public 에 새로 만드는 테이블/시퀀스도 자동 노출
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to anon, authenticated;
+alter default privileges in schema public
+  grant usage, select on sequences to anon, authenticated;
